@@ -12,12 +12,13 @@ function App() {
   const [nuevaCompra, setNuevaCompra] = useState({ productoId: '', usuario: '', cantidad: 1 });
   const [nuevaResena, setNuevaResena] = useState({ productoId: '', usuario: '', comentario: '' });
   
-  // Obtener todas las compras desde Express
-  useEffect(() => {
+  // Obtener todas las compras desde Express node-js
+  /*useEffect(() => {
       axios.get('http://localhost:5001/compras')
           .then(res => setCompras(res.data))
           .catch(err => console.error(err));
   }, []);
+  */
   const registrarCompra = () => {
     // Verifica si todos los campos tienen valores correctos
     if (nuevaCompra.productoId && nuevaCompra.usuario && nuevaCompra.cantidad > 0) {
@@ -34,23 +35,34 @@ function App() {
         console.log("Faltan datos para registrar la compra");
     }
 };
-
 const agregarResena = () => {
-  // Verifica si todos los campos tienen valores correctos
-  if (nuevaResena.productoId && nuevaResena.usuario && nuevaResena.comentario) {
-      axios.post('http://localhost:5001/resenas', nuevaResena)
-          .then(res => {
-              // Actualiza el estado de reseñas y muestra el resultado
-              setResenas([...resenas, res.data]);
-              console.log('Reseña agregada:', res.data);
-          })
-          .catch(err => {
-              console.error('Error al agregar la reseña:', err);
-          });
-  } else {
-      console.log("Faltan datos para agregar la reseña");
-  }
+    if (nuevaResena.productoId && nuevaResena.usuario && nuevaResena.comentario) {
+        axios.post('http://localhost:5001/resenas', nuevaResena)
+            .then(res => {
+                console.log('Reseña agregada:', res.data);
+
+                // Después de agregar la reseña, hacemos la solicitud GET para obtener todas las reseñas del servidor
+                axios.get(`http://localhost:5001/resenas/${nuevaResena.productoId}`)
+                    .then(response => {
+                        console.log('Reseñas actualizadas:', response.data);  // Verifica las reseñas cargadas
+                        setResenasProducto(response.data);  // Actualizamos el estado con las reseñas del servidor
+                    })
+                    .catch(err => console.error('Error al cargar reseñas:', err));
+            })
+            .catch(err => {
+                console.error('Error al agregar la reseña:', err);
+            });
+    } else {
+        console.log("Faltan datos para agregar la reseña");
+    }
 };
+
+
+
+
+
+
+
 
 
   // Registrar una nueva compra
@@ -66,8 +78,7 @@ const agregarResena = () => {
           .then(res => setResenas([...resenas, res.data]))
           .catch(err => console.error(err));
   };*/
-//--------------------------------------------  
-
+//-------------------------------------------- 
 
   // Obtener la lista de productos desde Flask
   useEffect(() => {
@@ -83,8 +94,31 @@ const agregarResena = () => {
           .catch(err => console.error(err));
   };
 
+
+
+  const [mostrarModal, setMostrarModal] = useState(false);
+  const [resenasProducto, setResenasProducto] = useState([]);
+
+  const abrirModalResenas = (productoId) => {
+    axios.get(`http://localhost:5001/resenas/${productoId}`)
+        .then(res => {
+            console.log('Reseñas cargadas:', res.data);  // Verificar que las reseñas se cargan
+            setResenasProducto(res.data);  // Actualizamos el estado con las reseñas
+            setMostrarModal(true);  // Mostramos el modal
+        })
+        .catch(err => console.error(err));
+};
+
+
+// Función para cerrar el modal
+const cerrarModal = () => {
+    setMostrarModal(false);
+};
+
+
   return (
     <>
+
       <div className="container mx-auto p-4">
           <h1 className="text-3xl font-bold mb-4">Marketplace de Productos</h1>
           {/* Formulario para agregar nuevos productos */}
@@ -118,17 +152,58 @@ const agregarResena = () => {
               </button>
           </div>
 
-          {/* Listar productos */}
-          <h2 className="text-2xl font-bold mb-4">Productos Disponibles</h2>
-          <ul>
-              {productos.map(producto => (
-                  <li key={producto.id} className="border p-4 mb-2">
-                      <h3 className="text-xl font-bold">{producto.nombre}</h3>
-                      <p>{producto.descripcion}</p>
-                      <p className="text-green-500">${producto.precio}</p>
-                  </li>
-              ))}
-          </ul>
+
+
+
+
+ {/* Restosdf del código */}
+
+ <h2 className="text-2xl font-bold mb-4">Productos Disponibles</h2>
+        <ul>
+            {productos.map(producto => (
+                <li key={producto.id} className="border p-4 mb-2">
+                    <h3 className="text-xl font-bold">{producto.nombre}</h3>
+                    <p>{producto.descripcion}</p>
+                    <p className="text-green-500">${producto.precio}</p>
+                    <button
+                        onClick={() => abrirModalResenas(producto.id)}
+                        className="bg-blue-500 text-white px-4 py-2 rounded"
+                    >
+                        Ver Reseñas
+                    </button>
+                </li>
+            ))}
+        </ul>
+
+        
+
+        {/* Modal de reseñas */}
+        {mostrarModal && (
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-500 bg-opacity-75">
+        <div className="bg-white p-6 rounded shadow-lg">
+            <h2 className="text-xl font-bold mb-4">Reseñas del Producto</h2>
+            <button onClick={cerrarModal} className="mb-4 text-red-500">Cerrar</button>
+            <ul>
+                {resenasProducto.length > 0 ? (
+                    resenasProducto.map(resena => (
+                        <li key={resena.id} className="border p-2 mb-2">
+                            <p><strong>Usuario:</strong> {resena.usuario}</p>
+                            <p><strong>Comentario:</strong> {resena.comentario}</p>
+                        </li>
+                    ))
+                ) : (
+                    <p>No hay reseñas para este producto</p>
+                )}
+            </ul>
+        </div>
+    </div>
+)}
+
+    
+
+
+
+
       </div>
 
 
@@ -175,17 +250,21 @@ const agregarResena = () => {
 <div className="mb-6">
     <h2 className="text-2xl font-bold mb-4">Agregar Reseña</h2>
     <select
-        value={nuevaResena.productoId}
-        onChange={(e) => setNuevaResena({ ...nuevaResena, productoId: e.target.value })}
-        className="border p-2 mr-2"
-    >
-        <option value="">Selecciona un producto</option>
-        {productos.map(producto => (
-            <option key={producto.id} value={producto.id}>
-                {producto.nombre}
-            </option>
-        ))}
-    </select>
+    value={nuevaResena.productoId}
+    onChange={(e) => {
+        console.log('Producto seleccionado:', e.target.value);  // Verifica si el valor del producto se está capturando correctamente
+        setNuevaResena({ ...nuevaResena, productoId: e.target.value });
+    }}
+    className="border p-2 mr-2"
+>
+    <option value="">Selecciona un producto</option>
+    {productos.map(producto => (
+        <option key={producto.id} value={producto.id}>
+            {producto.nombre}
+        </option>
+    ))}
+</select>
+
     <input
         type="text"
         placeholder="Usuario"
@@ -207,7 +286,16 @@ const agregarResena = () => {
         Agregar Reseña
     </button>
 </div>
-
+<h2 className="text-2xl font-bold mb-4">Lista de Compras</h2>
+<ul>
+    {compras.map(compra => (
+        <li key={compra.id} className="border p-4 mb-2">
+            <p>Producto ID: {compra.productoId}</p>
+            <p>Usuario: {compra.usuario}</p>
+            <p>Cantidad: {compra.cantidad}</p>
+        </li>
+    ))}
+</ul>
 
 
 
